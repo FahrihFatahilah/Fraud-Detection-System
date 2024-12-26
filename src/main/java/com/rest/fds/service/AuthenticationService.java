@@ -2,7 +2,9 @@ package com.rest.fds.service;
 
 
 import com.rest.fds.entity.Login;
+import com.rest.fds.entity.RegisterUser;
 import com.rest.fds.entity.User;
+import com.rest.fds.repository.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -10,14 +12,14 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthenticationService {
-    private final com.rest.fds.repository.UserRepository userRepository;
+    private final UserRepository userRepository;
 
     private final PasswordEncoder passwordEncoder;
 
     private final AuthenticationManager authenticationManager;
 
     public AuthenticationService(
-            com.rest.fds.repository.UserRepository userRepository,
+            UserRepository userRepository,
             AuthenticationManager authenticationManager,
             PasswordEncoder passwordEncoder
     ) {
@@ -26,7 +28,7 @@ public class AuthenticationService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public User signup(com.rest.fds.entity.RegisterUser input) {
+    public User signup(RegisterUser input) {
         User user = new User();
         user.setFullName(input.getFullName());
         user.setEmail(input.getEmail());
