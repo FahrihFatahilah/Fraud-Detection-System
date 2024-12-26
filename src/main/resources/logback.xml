@@ -1,0 +1,89 @@
+<configuration>
+    <!-- appender -->
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyyMMdd HH:mm:ss.SSS}|[%t]|%c{1}|traceId=%X{traceId:-}|%-5p|%m%n</pattern>
+        </encoder>
+    </appender>
+    <appender name="fds-system" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/logs/fds/system.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/logs/fds/system.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyyMMdd HH:mm:ss.SSS}|[%t]|%c{1}|traceId=%X{traceId:-}|%-5p|%m%n</pattern>
+        </encoder>
+    </appender>
+    <appender name="fds-spring" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/logs/fds/spring.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/logs/fds/spring.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyyMMdd HH:mm:ss.SSS}|[%t]|%c{1}|traceId=%X{traceId:-}|%-5p|%m%n</pattern>
+        </encoder>
+    </appender>
+    <appender name="fds-http" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/logs/fds/http.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/logs/fds/http.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyyMMdd HH:mm:ss.SSS}|[%t]|%c{1}|traceId=%X{traceId:-}|%-5p|%m%n</pattern>
+        </encoder>
+    </appender>
+    <logger name="com.rest.fds" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-system"/>
+    </logger>
+    <logger name="org.patimura" level="INFO" additivity="false">
+        <appender-ref ref="fds-system"/>
+    </logger>
+    <logger name="org.springframework" level="WARN" additivity="false">
+        <appender-ref ref="fds-system"/>
+    </logger>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-system"/>
+    </logger>
+    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-system"/>
+    </logger>
+    <logger name="org.hibernate.type" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-system"/>
+    </logger>
+    <logger name="org.hibernate.type.descriptor.sql" level="trace">
+        <appender-ref ref="fds-system" />
+    </logger>
+    <logger name="org.hibernate.SQL" level="trace" additivity="false">
+        <appender-ref ref="fds-system" />
+    </logger>
+    <logger name="org.apache.http" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-http"/>
+    </logger>
+    <logger name="org.apache.tomcat" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-spring"/>
+    </logger>
+    <logger name="org.apache.catalina" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-spring"/>
+    </logger>
+    <logger name="java.sql" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-spring" />
+    </logger>
+    <logger name="com.zaxxer.hikari" level="DEBUG" additivity="false">
+        <appender-ref ref="fds-spring" />
+    </logger>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE"/>
+    <logger name="org.springframework.cloud.sleuth" level="DEBUG"/>
+
+    <!-- root -->
+    <root level="DEBUG">
+        <appender-ref ref="stdout" />
+        <appender-ref ref="fds-spring"/>
+    </root>
+</configuration>
