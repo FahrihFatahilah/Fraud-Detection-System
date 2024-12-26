@@ -2,6 +2,8 @@ package com.rest.fds.controller;
 
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rest.fds.entity.Login;
 import com.rest.fds.entity.LoginResponse;
 import com.rest.fds.entity.RegisterUser;
@@ -35,6 +37,14 @@ public class AuthenticationController {
     public ResponseEntity<User> register(@RequestBody RegisterUser request) {
         logger.info(">>> incoming register user");
         User registeredUser = authenticationService.signup(request);
+
+        try{
+            ObjectMapper objectMapper = new ObjectMapper();
+            String a = objectMapper.writeValueAsString(request);
+            logger.info("debug {}", a);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
 
         logger.info(">>> user register request {} ",request);
 

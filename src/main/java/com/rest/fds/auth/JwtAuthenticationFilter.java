@@ -1,6 +1,8 @@
 package com.rest.fds.auth;
 
 import com.rest.fds.service.JwtService;
+import com.rest.fds.util.CachedBodyHttpServletRequest;
+import com.rest.fds.util.CachedBodyHttpServletResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -38,7 +41,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+
         logger.info("incoming request");
+
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+        CachedBodyHttpServletResponse wrappedResponse = new CachedBodyHttpServletResponse(httpResponse);
+        CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(httpRequest);
+
+        try {
+            String body = new String(wrappedRequest.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            logger.info("Incoming Request: Method={}, URI={}, Body={}",
+                    wrappedRequest.getMethod(),
+                    wrappedRequest.getRequestURI(),
+                    body);
+        } catch (IOException e) {
+            logger.error("Failed to read request body", e);
+        }
+
+
 
         final String authHeader = request.getHeader("Authorization");
 
@@ -48,7 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             logger.error("error auth not found ");
 
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(wrappedRequest, response);
             return;
         }
         try {
@@ -67,7 +89,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(wrappedRequest, response);
 
         } catch (Exception exception) {
             handlerExceptionResolver.resolveException(request, response, null, exception);
