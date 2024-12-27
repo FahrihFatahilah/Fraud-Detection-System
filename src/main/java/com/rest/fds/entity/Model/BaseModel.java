@@ -29,9 +29,19 @@ public class BaseModel<T> {
         return response;
     }
 
+    public static BaseModel transactionError(String errorCode,String errorDescription,Object data) {
+        BaseModel response = new BaseModel();
+        response.setRefNo(generateReferralCode());
+        response.setErrorCode(errorCode);
+        response.setSuccessful(false);
+        response.setErrorDescription(errorDescription);
+        response.setData(data);
+        return response;
+    }
+
     private String refNo;
     private boolean successful;
-    private Integer errorCode;
+    private String errorCode;
     private String errorDescription;
     private String message;
     private T data;
@@ -70,12 +80,11 @@ public class BaseModel<T> {
     }
 
 
-
-    public Integer getErrorCode() {
+    public String getErrorCode() {
         return errorCode;
     }
 
-    public void setErrorCode(Integer errorCode) {
+    public void setErrorCode(String errorCode) {
         this.errorCode = errorCode;
     }
 

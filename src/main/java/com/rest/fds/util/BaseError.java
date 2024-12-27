@@ -6,12 +6,12 @@ import org.springframework.http.ResponseEntity;
 
 public class BaseError<T> {
 
-    public ResponseEntity<BaseModel> createErrorResponse(int errorCode, String errorDescription) {
+    public ResponseEntity<BaseModel> createErrorResponse(String errorCode, String errorDescription) {
         BaseModel baseModel = new BaseModel();
         baseModel.setSuccessful(false);
         baseModel.setErrorCode(errorCode);
         baseModel.setErrorDescription(errorDescription);
-        return new ResponseEntity<BaseModel>(baseModel,HttpStatusCode.valueOf(errorCode));
+        return new ResponseEntity<BaseModel>(baseModel,HttpStatusCode.valueOf(Integer.parseInt(errorCode)));
     }
     public ResponseEntity<BaseModel> createSuccessResponseResponse(String refNo,String msg,T response) {
         BaseModel<T> baseModel = new BaseModel<>();

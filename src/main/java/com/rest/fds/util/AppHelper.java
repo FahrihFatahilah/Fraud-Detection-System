@@ -4,6 +4,7 @@ import java.util.Random;
 
 public class AppHelper {
 
+
     public static boolean validateLong(String longitude) {
         boolean isValid = false;
         if (longitude != null) {
