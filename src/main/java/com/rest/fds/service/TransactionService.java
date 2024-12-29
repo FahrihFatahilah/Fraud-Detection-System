@@ -3,8 +3,10 @@ package com.rest.fds.service;
 import com.rest.fds.entity.IpAddressEntity;
 import com.rest.fds.entity.Model.BaseModel;
 import com.rest.fds.entity.TransactionEntity;
+import com.rest.fds.entity.UserAgentEntity;
 import com.rest.fds.repository.IpAddressRepository;
 import com.rest.fds.repository.TransactionRepository;
+import com.rest.fds.repository.UserAgentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ public class TransactionService {
 
     @Autowired
     IpAddressRepository ipAddressRepository;
+
+    @Autowired
+    UserAgentRepository userAgentRepository;
 
     public BaseModel isSuspiciousTransaction(TransactionEntity currentTransaction) {
 
@@ -77,6 +82,12 @@ public class TransactionService {
                 isSuspicious = true;
             }
 
+            if(checkUserAgent(latestTransaction.getUserAgent())){
+                logger.info("Suspicious: User-Agent blacklisted.");
+                isSuspicious = true;
+
+            }
+
             double velocity = calculateVelocity(latestTransaction, currentTransaction);
             if (velocity > getMaxAllowedVelocity(currentTransaction.getLocation())) {
                 logger.info("Suspicious: Velocity exceeds allowed threshold for geofenced region.");
@@ -103,6 +114,12 @@ public class TransactionService {
             currentTransaction.setSuspiciousFlag(false);
             return BaseModel.success(generateReferralCode(), "Transaction Processed Successfully", currentTransaction);
         }
+    }
+
+    private boolean checkUserAgent(String userAgent) {
+        boolean isBlackListed = false;
+        List< UserAgentEntity > listUserAgent = userAgentRepository.findAll();
+        return listUserAgent.stream().anyMatch(ip -> ip.getUserAgent().equals(userAgent));
     }
 
 
