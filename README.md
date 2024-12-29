@@ -27,7 +27,7 @@ This project provides a service that validates transactions based on various cri
 
 
 ```bash
-  git clone [https://github.com/FahrihFatahilah/Fraud-Detection-System]
+  git clone https://github.com/FahrihFatahilah/Fraud-Detection-System]
 ```
 
 ### 2. Build the project using Maven
