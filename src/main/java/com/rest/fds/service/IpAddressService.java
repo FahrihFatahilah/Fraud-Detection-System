@@ -4,8 +4,6 @@ import com.rest.fds.entity.IpAddressEntity;
 import com.rest.fds.repository.IpAddressRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,30 +16,36 @@ public class IpAddressService {
     private IpAddressRepository ipAddressRepository;
 
     public Boolean insertBlackListIp(IpAddressEntity model){
+
         if(validateIp(model.getIpAddress())){
+
             ipAddressRepository.save(model);
+
             return true;
 
         }else {
+
             return false;
+
         }
     }
 
     public Boolean deleteIpSingleIp(String ipAddress){
+
         ipAddressRepository.deleteByIpAddress(ipAddress);
+
         return true;
     }
 
     @Transactional
     public void deleteListIp(List<IpAddressEntity> ipAddressEntity) {
-       try{
-           List<String> ipAddresses = ipAddressEntity.stream()
-                   .map(IpAddressEntity::getIpAddress)
-                   .collect(Collectors.toList());
-           ipAddressRepository.deleteByIpAddressIn(ipAddresses);
-       }catch (Exception e){
-           throw e;
-       }
+
+        List<String> ipAddresses = ipAddressEntity.stream()
+                .map(IpAddressEntity::getIpAddress)
+                .collect(Collectors.toList());
+
+        ipAddressRepository.deleteByIpAddressIn(ipAddresses);
+
     }
 
     public List<IpAddressEntity> getIpList(){

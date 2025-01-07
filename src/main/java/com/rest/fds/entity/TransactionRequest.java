@@ -1,16 +1,13 @@
 package com.rest.fds.entity;
 
-import com.rest.fds.entity.Model.BaseModel;
+import com.rest.fds.entity.Model.BaseResponseModel;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public class TransactionRequest extends BaseModel {
+@Data
+@NoArgsConstructor
+public class TransactionRequest<T> extends BaseResponseModel {
 
     private TransactionEntity request;
 
-    public TransactionEntity getRequest() {
-        return request;
-    }
-
-    public void setRequest(TransactionEntity request) {
-        this.request = request;
-    }
 }

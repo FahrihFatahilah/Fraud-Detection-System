@@ -1,5 +1,6 @@
 package com.rest.fds.entity;
 
+import com.rest.fds.util.AppHelper;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -16,6 +17,9 @@ public class TransactionEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "refNo", nullable = false)
+    private String transactionRefNo;
 
     @Column(name = "user_id", nullable = false)
     private String userId;
@@ -212,5 +216,13 @@ public class TransactionEntity {
 
     public void setUpdatedAt(Date updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getTransactionRefNo() {
+        return transactionRefNo;
+    }
+
+    public void setTransactionRefNo(String transactionRefNo) {
+        this.transactionRefNo = AppHelper.generateReferralCode();
     }
 }

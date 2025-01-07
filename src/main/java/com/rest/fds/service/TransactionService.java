@@ -1,7 +1,7 @@
 package com.rest.fds.service;
 
 import com.rest.fds.entity.IpAddressEntity;
-import com.rest.fds.entity.Model.BaseModel;
+import com.rest.fds.entity.Model.BaseResponseModel;
 import com.rest.fds.entity.TransactionEntity;
 import com.rest.fds.entity.UserAgentEntity;
 import com.rest.fds.repository.IpAddressRepository;
@@ -13,191 +13,262 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-
-import static com.rest.fds.util.AppHelper.generateReferralCode;
+import java.util.Map;
 
 @Service
 public class TransactionService {
-
     private static final Logger logger = LoggerFactory.getLogger(TransactionService.class);
 
-    @Autowired
-    TransactionRepository transactionRepository;
+    private static final double SUSPICIOUS_AMOUNT_THRESHOLD = 10000.0;
+    private static final int LOCATION_CHANGE_THRESHOLD = 3;
+    private static final int SUSPICIOUS_HOUR_START = 6;
+    private static final int SUSPICIOUS_HOUR_END = 22;
+    private static final Map<String, Double> VELOCITY_LIMITS = Map.of(
+            "UrbanArea", 80.0,
+            "RuralArea", 120.0,
+            "Highway", 200.0
+    );
 
     @Autowired
-    IpAddressRepository ipAddressRepository;
+    private TransactionRepository transactionRepository;
 
     @Autowired
-    UserAgentRepository userAgentRepository;
+    private IpAddressRepository ipAddressRepository;
 
-    public BaseModel isSuspiciousTransaction(TransactionEntity currentTransaction) {
+    @Autowired
+    private UserAgentRepository userAgentRepository;
+
+    public<T> BaseResponseModel<TransactionEntity> isSuspiciousTransaction(TransactionEntity currentTransaction) {
+        List<String> suspiciousReasons = new ArrayList<>();
+        boolean isSuspicious = false;
 
         List<TransactionEntity> latestTransactions = transactionRepository.findLatestTransactions(currentTransaction.getUserId());
-        boolean isSuspicious = false;
-        TransactionEntity latestTransaction = null;
-
-        if (latestTransactions != null && !latestTransactions.isEmpty()) {
-            latestTransaction = latestTransactions.get(0);
-        }
+        TransactionEntity latestTransaction = latestTransactions.isEmpty() ? null : latestTransactions.getFirst();
 
         if (isIpBlacklisted(currentTransaction.getIpAddress())) {
-            logger.info("Suspicious: IP address is blacklisted.");
+            suspiciousReasons.add("IP address is blacklisted");
+            isSuspicious = true;
+        }
+
+        if (checkUserAgent(currentTransaction.getUserAgent())) {
+            suspiciousReasons.add("User agent is blacklisted");
+            isSuspicious = true;
+        }
+
+        if (isDuplicateTransaction(currentTransaction)) {
+            suspiciousReasons.add("Duplicate transaction detected");
+            isSuspicious = true;
+        }
+
+        if (latestTransaction != null && !isValidAppVersionTransition(
+                latestTransaction.getAppVersion(),
+                currentTransaction.getAppVersion())) {
+            suspiciousReasons.add("Suspicious app version change");
+            isSuspicious = true;
+        }
+
+        if (latestTransaction != null && isDeviceMismatch(latestTransaction, currentTransaction)) {
+            suspiciousReasons.add("Device mismatch detected");
             isSuspicious = true;
         }
 
         if (!currentTransaction.getTransactionType().equalsIgnoreCase("Login") &&
                 !currentTransaction.getTransactionType().equalsIgnoreCase("Activation")) {
 
-            double totalTransactionAmount = 0.0;
-            for (TransactionEntity transaction : latestTransactions) {
-                totalTransactionAmount += transaction.getTransactionAmount();
-            }
-
-            double suspiciousTransactionThreshold = 10000.0;
-            if (totalTransactionAmount > suspiciousTransactionThreshold) {
-                logger.info("Suspicious: Total transaction amount exceeds threshold.");
+            double totalTransactionAmount = calculateRecentTransactionsTotal(latestTransactions);
+            if (totalTransactionAmount > SUSPICIOUS_AMOUNT_THRESHOLD) {
+                suspiciousReasons.add("Total transaction amount exceeds threshold");
                 isSuspicious = true;
             }
 
-            if (isTransactionAmountSuspicious(currentTransaction, latestTransaction)) {
-                logger.info("Suspicious: Unusual transaction amount pattern detected.");
+            if (latestTransaction != null && isTransactionAmountSuspicious(currentTransaction, latestTransaction)) {
+                suspiciousReasons.add("Unusual transaction amount pattern");
                 isSuspicious = true;
             }
         }
 
-        if (latestTransaction == null) {
-            logger.info("No previous transaction found. Proceeding with blacklist and other checks.");
-
-        } else {
-
-            if (hasFrequentLocationChange(currentTransaction.getUserId(), currentTransaction.getLatitude(), currentTransaction.getLongitude())) {
-                logger.info("Suspicious: Frequent location change detected.");
+        if (latestTransaction != null) {
+            if (hasFrequentLocationChange(currentTransaction.getUserId(),
+                    currentTransaction.getLatitude(),
+                    currentTransaction.getLongitude())) {
+                suspiciousReasons.add("Frequent location changes detected");
                 isSuspicious = true;
-            }
-
-            if (!latestTransaction.getUserAgent().equalsIgnoreCase(currentTransaction.getUserAgent())) {
-                logger.info("Suspicious: User-Agent mismatch.");
-                isSuspicious = true;
-            }
-
-            if(checkUserAgent(latestTransaction.getUserAgent())){
-                logger.info("Suspicious: User-Agent blacklisted.");
-                isSuspicious = true;
-
             }
 
             double velocity = calculateVelocity(latestTransaction, currentTransaction);
             if (velocity > getMaxAllowedVelocity(currentTransaction.getLocation())) {
-                logger.info("Suspicious: Velocity exceeds allowed threshold for geofenced region.");
+                suspiciousReasons.add("Suspicious travel velocity");
                 isSuspicious = true;
             }
         }
 
+        if (isChannelMismatch(latestTransaction, currentTransaction)) {
+            suspiciousReasons.add("Unusual channel transition");
+            isSuspicious = true;
+        }
+
         if (isTransactionAtOddHours(currentTransaction.getTransactionDate())) {
-            logger.info("Suspicious: Transaction at unusual hours.");
+            suspiciousReasons.add("Transaction at unusual hours");
             isSuspicious = true;
         }
 
         if (isTransactionAnomalous(currentTransaction)) {
-            logger.info("Suspicious: Historical anomaly detected.");
+            suspiciousReasons.add("Historical transaction pattern anomaly");
             isSuspicious = true;
         }
+
+        currentTransaction.setSuspiciousFlag(isSuspicious);
 
         transactionRepository.save(currentTransaction);
 
         if (isSuspicious) {
-            currentTransaction.setSuspiciousFlag(true);
-            return BaseModel.transactionError("FDS403", "Suspicious Transaction Detected", currentTransaction);
+            String errorMessage = String.join(", ", suspiciousReasons);
+
+            logger.warn("Suspicious transaction detected for user {}: {}",
+                    currentTransaction.getUserId(), errorMessage);
+            return BaseResponseModel.transactionError("FDS403", errorMessage, currentTransaction);
         } else {
-            currentTransaction.setSuspiciousFlag(false);
-            return BaseModel.success(generateReferralCode(), "Transaction Processed Successfully", currentTransaction);
+            return BaseResponseModel.success(
+                    "Transaction Processed Successfully", currentTransaction);
         }
     }
 
-    private boolean checkUserAgent(String userAgent) {
-        boolean isBlackListed = false;
-        List< UserAgentEntity > listUserAgent = userAgentRepository.findAll();
-        return listUserAgent.stream().anyMatch(ip -> ip.getUserAgent().equals(userAgent));
+    private boolean isDeviceMismatch(TransactionEntity previous, TransactionEntity current) {
+        return !previous.getDeviceBrand().equals(current.getDeviceBrand()) ||
+                !previous.getDeviceOs().equals(current.getDeviceOs());
     }
 
+    private boolean isChannelMismatch(TransactionEntity previous, TransactionEntity current) {
+        if (previous == null) return false;
+        return !previous.getChannelName().equals(current.getChannelName());
+    }
+
+    private boolean isValidAppVersionTransition(String previousVersion, String currentVersion) {
+        try {
+            String[] prev = previousVersion.split("\\.");
+            String[] curr = currentVersion.split("\\.");
+
+            int prevMajor = Integer.parseInt(prev[0]);
+            int currMajor = Integer.parseInt(curr[0]);
+
+            return currMajor >= prevMajor && (currMajor - prevMajor) <= 1;
+        } catch (Exception e) {
+            logger.error("Error comparing app versions", e);
+            return false;
+        }
+    }
+
+    private double calculateRecentTransactionsTotal(List<TransactionEntity> transactions) {
+        return transactions.stream()
+                .filter(t -> t.getTransactionAmount() != null)
+                .mapToDouble(TransactionEntity::getTransactionAmount)
+                .sum();
+    }
+
+    private boolean checkUserAgent(String userAgent) {
+        List<UserAgentEntity> listUserAgent = userAgentRepository.findAll();
+        return listUserAgent.stream()
+                .anyMatch(ua -> ua.getUserAgent().equals(userAgent));
+    }
 
     private boolean isDuplicateTransaction(TransactionEntity currentTransaction) {
-
-        Optional<TransactionEntity> existingTransactionOpt = transactionRepository.findByUserIdAndTransactionAmountAndTransactionDateAndTransactionType(currentTransaction.getUserId(), currentTransaction.getTransactionAmount(), currentTransaction.getTransactionDate(), currentTransaction.getTransactionType());
-
-        return existingTransactionOpt.isPresent();
+        return transactionRepository.findByUserIdAndTransactionAmountAndTransactionDateAndTransactionType(
+                currentTransaction.getUserId(),
+                currentTransaction.getTransactionAmount(),
+                currentTransaction.getTransactionDate(),
+                currentTransaction.getTransactionType()
+        ).isPresent();
     }
 
     private boolean isIpBlacklisted(String ipAddress) {
         List<IpAddressEntity> blacklistedIps = ipAddressRepository.findAll();
-        return blacklistedIps.stream().anyMatch(ip -> ip.getIpAddress().equals(ipAddress));
+
+        return blacklistedIps.stream()
+                .anyMatch(ip -> ip.getIpAddress().equals(ipAddress));
     }
 
     private boolean hasFrequentLocationChange(String userId, double newLatitude, double newLongitude) {
-
         List<TransactionEntity> recentTransactions = transactionRepository.findRecentTransactions(userId);
 
-        long frequentLocationChangeCount = recentTransactions.stream().map(transaction -> calculateHaversineDistance(transaction.getLatitude(), transaction.getLongitude(), newLatitude, newLongitude)).filter(distance -> distance > 100)
+        long frequentLocationChangeCount = recentTransactions.stream()
+                .map(transaction -> calculateHaversineDistance(
+                        transaction.getLatitude(),
+                        transaction.getLongitude(),
+                        newLatitude,
+                        newLongitude))
+                .filter(distance -> distance > 100)
                 .count();
 
-        return frequentLocationChangeCount > 3;
+        return frequentLocationChangeCount > LOCATION_CHANGE_THRESHOLD;
     }
 
     private double calculateVelocity(TransactionEntity previous, TransactionEntity current) {
-        double previousLatitude = previous.getLatitude();
-        double previousLongitude = previous.getLongitude();
-        double currentLatitude = current.getLatitude();
-        double currentLongitude = current.getLatitude();
+        double distance = calculateHaversineDistance(
+                previous.getLatitude(),
+                previous.getLongitude(),
+                current.getLatitude(),
+                current.getLongitude()
+        );
 
-        double distance = calculateHaversineDistance(previousLatitude, previousLongitude, currentLatitude, currentLongitude);
-        long timeDifferenceInSeconds = java.time.Duration.between(previous.getTransactionDate(), current.getTransactionDate()).toSeconds();
+        long timeDifferenceInSeconds = java.time.Duration.between(
+                previous.getTransactionDate(),
+                current.getTransactionDate()
+        ).toSeconds();
 
         return timeDifferenceInSeconds > 0 ? (distance / timeDifferenceInSeconds) * 3600 : 0;
     }
 
     private double getMaxAllowedVelocity(String location) {
-        if (location.contains("UrbanArea")) return 80;
-        if (location.contains("RuralArea")) return 120;
-        return 1000;
+        return VELOCITY_LIMITS.getOrDefault(location, 1000.0);
     }
 
     private boolean isTransactionAmountSuspicious(TransactionEntity current, TransactionEntity previous) {
         double currentAmount = current.getTransactionAmount() != null ? current.getTransactionAmount() : 0;
         double previousAmount = previous.getTransactionAmount() != null ? previous.getTransactionAmount() : 0;
-        return Math.abs(currentAmount - previousAmount) > 10000;
+        return Math.abs(currentAmount - previousAmount) > SUSPICIOUS_AMOUNT_THRESHOLD;
     }
 
     private boolean isTransactionAtOddHours(LocalDateTime transactionDate) {
         int hour = transactionDate.getHour();
-        return hour < 6 || hour > 22;
+        return hour < SUSPICIOUS_HOUR_START || hour > SUSPICIOUS_HOUR_END;
     }
 
     public boolean isTransactionAnomalous(TransactionEntity transaction) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startDate = now.minusDays(30);
-        LocalDateTime endDate = now;
 
-        List<TransactionEntity> historicalTransactions = transactionRepository.findHistoricalTransactions(transaction.getUserId(), startDate, endDate);
+        List<TransactionEntity> historicalTransactions = transactionRepository
+                .findHistoricalTransactions(transaction.getUserId(), startDate, now);
 
         if (historicalTransactions.isEmpty()) {
-            logger.info("No historical transactions found for user.");
+            logger.info("No historical transactions found for user");
             return false;
         }
 
-        double averageAmount = historicalTransactions.stream().filter(t -> t.getTransactionAmount() != null).mapToDouble(TransactionEntity::getTransactionAmount).average().orElse(0);
+        double averageAmount = historicalTransactions.stream()
+                .filter(t -> t.getTransactionAmount() != null)
+                .mapToDouble(TransactionEntity::getTransactionAmount)
+                .average()
+                .orElse(0);
 
-        double currentAmount = transaction.getTransactionAmount() != null ? transaction.getTransactionAmount() : 0;
+        double currentAmount = transaction.getTransactionAmount() != null ?
+                transaction.getTransactionAmount() : 0;
 
         return currentAmount > averageAmount * 2;
     }
 
     private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
         final int EARTH_RADIUS_KM = 6371;
+
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return EARTH_RADIUS_KM * c;
     }

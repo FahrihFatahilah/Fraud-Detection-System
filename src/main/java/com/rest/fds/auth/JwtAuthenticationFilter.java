@@ -2,7 +2,6 @@ package com.rest.fds.auth;
 
 import com.rest.fds.service.JwtService;
 import com.rest.fds.util.CachedBodyHttpServletRequest;
-import com.rest.fds.util.CachedBodyHttpServletResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,9 +21,11 @@ import java.nio.charset.StandardCharsets;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
     private final HandlerExceptionResolver handlerExceptionResolver;
 
     private final JwtService jwtService;
+
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 
@@ -44,11 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         logger.info("incoming request");
 
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
-        HttpServletResponse httpResponse = (HttpServletResponse) response;
-
-        CachedBodyHttpServletResponse wrappedResponse = new CachedBodyHttpServletResponse(httpResponse);
-        CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(httpRequest);
+        CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest((HttpServletRequest) request);
 
         try {
             String body = new String(wrappedRequest.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -60,12 +57,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             logger.error("Failed to read request body", e);
         }
 
-
-
         final String authHeader = request.getHeader("Authorization");
 
         logger.info("incoming request autheader {} ", authHeader);
-
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             logger.error("error auth not found ");
@@ -73,6 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(wrappedRequest, response);
             return;
         }
+
         try {
             final String jwt = authHeader.substring(7);
 
@@ -89,10 +84,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
-            filterChain.doFilter(wrappedRequest, response);
 
+            filterChain.doFilter(wrappedRequest, response);
+                
         } catch (Exception exception) {
             handlerExceptionResolver.resolveException(request, response, null, exception);
         }
+
     }
 }

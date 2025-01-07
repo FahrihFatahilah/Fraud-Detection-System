@@ -2,7 +2,6 @@ package com.rest.fds.repository;
 
 import com.rest.fds.entity.IpAddressEntity;
 import jakarta.transaction.Transactional;
-import org.springframework.data.domain.Example;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

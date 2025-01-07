@@ -1,7 +1,6 @@
 package com.rest.fds.config;
 
 
-
 import com.rest.fds.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,10 +17,6 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class AppConfig {
 
-    @Bean
-    public RestTemplate restTemplate(){
-        return new RestTemplate();
-    }
     private final UserRepository userRepository;
 
     public AppConfig(UserRepository userRepository) {
@@ -29,9 +24,13 @@ public class AppConfig {
     }
 
     @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    @Bean
     UserDetailsService userDetailsService() {
-        return username -> (UserDetails) userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return username -> (UserDetails) userRepository.findByEmail(username).orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 
     @Bean

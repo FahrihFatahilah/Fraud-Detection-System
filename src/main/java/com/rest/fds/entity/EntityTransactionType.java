@@ -22,8 +22,6 @@ public class EntityTransactionType {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public EntityTransactionType() {
-    }
 
     public EntityTransactionType(String transactionName, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.transactionName = transactionName;

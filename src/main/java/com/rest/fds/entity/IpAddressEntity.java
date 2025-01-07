@@ -2,10 +2,13 @@ package com.rest.fds.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 
 @Entity
 @Table(name = "ip_blacklist")
+@Data
+@NoArgsConstructor
 public class IpAddressEntity {
 
     @Id
@@ -16,11 +19,4 @@ public class IpAddressEntity {
     @Column(name ="ip_address", nullable = false, unique = true)
     private String ipAddress;
 
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
 }

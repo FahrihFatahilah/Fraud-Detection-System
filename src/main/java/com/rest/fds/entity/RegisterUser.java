@@ -1,8 +1,10 @@
 package com.rest.fds.entity;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class RegisterUser {
     private String email;
     private String password;

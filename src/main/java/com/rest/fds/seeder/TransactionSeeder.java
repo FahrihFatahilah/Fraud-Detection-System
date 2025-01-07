@@ -31,7 +31,7 @@ public class TransactionSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if(userAgentRepository.count() == 0){
+        if (userAgentRepository.count() == 0) {
             List<String> userAgentNames = Arrays.asList(
                     "01h4x.com",
                     "360Spider",
@@ -705,7 +705,7 @@ public class TransactionSeeder implements CommandLineRunner {
             LocalDateTime now = LocalDateTime.now();
 
             for (String userAgentName : userAgentNames) {
-                UserAgentEntity userAgent = new UserAgentEntity(userAgentName,now, now);
+                UserAgentEntity userAgent = new UserAgentEntity(userAgentName, now, now);
                 userAgentRepository.save(userAgent);
             }
         }
