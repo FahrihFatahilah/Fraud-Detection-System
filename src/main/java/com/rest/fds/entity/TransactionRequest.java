@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class TransactionRequest<T> extends BaseResponseModel {
+public class TransactionRequest<T> extends BaseResponseModel<T> {
 
     private TransactionEntity request;
 
