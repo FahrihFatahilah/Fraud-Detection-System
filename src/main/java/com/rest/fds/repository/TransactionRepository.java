@@ -20,5 +20,5 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
     @Query("SELECT t FROM TransactionEntity t WHERE t.userId = :userId ORDER BY t.transactionDate DESC")
     List<TransactionEntity> findLatestTransactions(@Param("userId") String userId);
 
-    Optional<TransactionEntity> findByUserIdAndTransactionAmountAndTransactionDateAndTransactionType(String userId, Double transactionAmount, LocalDateTime transactionDate, String transactionType);
+    Optional<TransactionEntity> findByUserIdAndTransactionAmountAndTransactionDateAndTransactionTypeAndTransactionRefNo(String userId, Double transactionAmount, LocalDateTime transactionDate, String transactionType, String refNo);
 }

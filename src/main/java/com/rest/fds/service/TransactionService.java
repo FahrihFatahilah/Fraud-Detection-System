@@ -40,13 +40,16 @@ public class TransactionService {
     @Autowired
     private UserAgentRepository userAgentRepository;
 
+    public TransactionService(UserAgentRepository userAgentRepository) {
+        this.userAgentRepository = userAgentRepository;
+    }
+
     public<T> BaseResponseModel<TransactionEntity> isSuspiciousTransaction(TransactionEntity currentTransaction) {
         List<String> suspiciousReasons = new ArrayList<>();
         boolean isSuspicious = false;
 
         List<TransactionEntity> latestTransactions = transactionRepository.findLatestTransactions(currentTransaction.getUserId());
         TransactionEntity latestTransaction = latestTransactions.isEmpty() ? null : latestTransactions.getFirst();
-
         if (isIpBlacklisted(currentTransaction.getIpAddress())) {
             suspiciousReasons.add("IP address is blacklisted");
             isSuspicious = true;
@@ -128,7 +131,7 @@ public class TransactionService {
 
             logger.warn("Suspicious transaction detected for user {}: {}",
                     currentTransaction.getUserId(), errorMessage);
-            return BaseResponseModel.transactionError("FDS403", errorMessage, currentTransaction);
+            return BaseResponseModel.transactionError("FDS403", errorMessage, currentTransaction,isSuspicious,currentTransaction.getTransactionRefNo());
         } else {
             return BaseResponseModel.success(
                     "Transaction Processed Successfully", currentTransaction);
@@ -174,11 +177,12 @@ public class TransactionService {
     }
 
     private boolean isDuplicateTransaction(TransactionEntity currentTransaction) {
-        return transactionRepository.findByUserIdAndTransactionAmountAndTransactionDateAndTransactionType(
+        return transactionRepository.findByUserIdAndTransactionAmountAndTransactionDateAndTransactionTypeAndTransactionRefNo(
                 currentTransaction.getUserId(),
                 currentTransaction.getTransactionAmount(),
                 currentTransaction.getTransactionDate(),
-                currentTransaction.getTransactionType()
+                currentTransaction.getTransactionType(),
+                currentTransaction.getTransactionRefNo()
         ).isPresent();
     }
 

@@ -1,17 +1,22 @@
 package com.rest.fds.entity;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "user_agent")
 @Data
+@NoArgsConstructor
 public class UserAgentEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID id;
+
 
     @Column(name ="name", nullable = false)
     private String userAgent;
