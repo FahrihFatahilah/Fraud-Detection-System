@@ -2,6 +2,7 @@ package com.rest.fds.auth;
 
 import com.rest.fds.service.JwtService;
 import com.rest.fds.util.CachedBodyHttpServletRequest;
+import com.rest.fds.util.CachedBodyHttpServletResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         logger.info("incoming request");
 
         CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest((HttpServletRequest) request);
+        CachedBodyHttpServletResponse wrappedResponse = new CachedBodyHttpServletResponse((HttpServletResponse) response);
 
         try {
             String body = new String(wrappedRequest.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -56,6 +58,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (IOException e) {
             logger.error("Failed to read request body", e);
         }
+        String body = new String(wrappedResponse.getCapturedResponseBody().getBytes(), StandardCharsets.UTF_8);
+
+        logger.info("data response {} ", wrappedResponse.getWriter());
 
         final String authHeader = request.getHeader("Authorization");
 

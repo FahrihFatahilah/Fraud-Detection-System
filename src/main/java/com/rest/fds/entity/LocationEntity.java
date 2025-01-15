@@ -3,15 +3,17 @@ package com.rest.fds.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "location_list")
 @Data
 public class LocationEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_gen_name")
-    @SequenceGenerator(name = "seq_gen_name", sequenceName = "my_sequence", initialValue = 1000, allocationSize = 1)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID id;
 
     @Column(name ="latitude", nullable = false,unique = true)
     private Double latitude;
